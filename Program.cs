@@ -9,6 +9,11 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using WebCar.DbContext;
 using Microsoft.Extensions.Configuration;
+using Serilog;
+using Serilog.Exceptions;
+using Serilog.Sinks.Elasticsearch;
+using System.Reflection;
+using Microsoft.AspNetCore.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,8 +117,8 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddStackExchangeRedisCache(options => { options.Configuration = builder.Configuration["RedisCacheUrl"]; });
 
 
-
-
+configureLogging();
+builder.Host.UseSerilog();
 
 // pipeline
 var app = builder.Build();
@@ -121,8 +126,6 @@ app.UseCors(x => x
            .AllowAnyOrigin()
            .AllowAnyMethod()
            .AllowAnyHeader());
-
-app.UseHttpsRedirection();
 
 if (app.Environment.IsDevelopment())
 {
@@ -137,4 +140,36 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+
 app.Run();
+
+void configureLogging()
+{
+    var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+    var configuration = new ConfigurationBuilder()
+        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+        .AddJsonFile(
+            $"appsettings.{environment}.json", optional: false
+           ).Build();
+    Log.Logger = new LoggerConfiguration()
+        .Enrich.FromLogContext()
+        .Enrich.WithExceptionDetails()
+        .WriteTo.Debug()
+        .WriteTo.Console()
+        .WriteTo.Elasticsearch(ConfigureElasticSink(configuration, environment))
+        .Enrich.WithProperty("Environment", environment)
+        .ReadFrom.Configuration(configuration)
+        .WriteTo.File("logs/webCar-.txt", rollingInterval: RollingInterval.Day)
+        .CreateLogger();
+}
+ElasticsearchSinkOptions ConfigureElasticSink(IConfigurationRoot configuration, string environment)
+{
+    return new ElasticsearchSinkOptions(new Uri(configuration["ElasticConfiguration:Uri"]))
+    {
+        AutoRegisterTemplate = true,
+        IndexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name.ToLower().Replace(".", "-")}-{environment.ToLower()}-{DateTime.UtcNow:yyyy-MM}",
+        NumberOfReplicas = 1,
+        NumberOfShards = 2,
+        
+    };
+}

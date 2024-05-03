@@ -26,7 +26,7 @@ namespace WebCar.Services
                 // nhan du lieu qua Dto
                 var carCompany = new CarCompany
                 {
-                    name = carCompanyDto.ten,
+                    name = carCompanyDto.name,
                     logo = carCompanyDto.logo
                 };
                 //luu vao database
@@ -158,7 +158,7 @@ namespace WebCar.Services
                     };
                 }
                 //gan du lieu moi 
-                existingCarCompany.name = carCompanyDto.ten;
+                existingCarCompany.name = carCompanyDto.name;
                 existingCarCompany.logo = carCompanyDto.logo;
                 //luu du lieu vao data
                 await _dbContext.SaveChangesAsync();
@@ -168,7 +168,7 @@ namespace WebCar.Services
                 return new AuthServiceResponseDto
                 {
                     IsSucceed = true,
-                    Message = "Cập nhật thông tin CarCompany thành công"
+                    Message = "Update successfull"
                 };
             }
             catch (Exception ex)

@@ -80,7 +80,7 @@ namespace WebCar.Controllers
         // PUT api/<ValuesController>/5
         [HttpPut]
         [Authorize(Roles = Models.Role.ADMIN)]
-        [Route("updateCarCompany /{id}")]
+        [Route("updateCarCompany/{id}")]
         public async Task<IActionResult> UpdateCarCompany(int id, [FromBody] CarCompanyDto carCompanyDto)
         {
             var updateResult = await _carCompanyService.updateCarCompanyAsync(id, carCompanyDto);

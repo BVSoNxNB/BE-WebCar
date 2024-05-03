@@ -9,7 +9,7 @@ namespace WebCar.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)] // Đánh dấu cột Id là Identity
-        public int Id { get; set; }
+        public int id { get; set; }
         [Display(Name = "Full name")]
         public string ten { get; set; }
         public List<string> hinh { get; set; }

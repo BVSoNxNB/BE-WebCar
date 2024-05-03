@@ -30,12 +30,79 @@ namespace WebCar.Controllers
 
             return BadRequest(orderResuilt);
         }
-        [HttpPut]
+        [HttpGet]
         //[Authorize(Roles = Models.Role.ADMIN)]
-        [Route("updateCarCompany /{id}")]
-        public async Task<IActionResult> UpdateCarCompany(int id, [FromBody] StatusDto status)
+        [Route("getAllOrder")]
+        public async Task<IActionResult> getAllOrder()
         {
-            var updateResult = await _orderService.UpdateStatus(id, status);
+            try
+            {
+                var result = await _orderService.getAllOrderAsync();
+
+                if (result.IsSucceed)
+                {
+                    return Ok(result.responseData); // Return the responseData retrieved from the service
+                }
+                else
+                {
+                    return NotFound(result.Message); // Return a not found message if the operation fails
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}"); // Return a generic error message for internal server errors
+            }
+        }
+        [HttpGet]
+        [Route("getOrderById/{id}")]
+        public async Task<IActionResult> getOrderByIdAsync(int id)
+        {
+            try
+            {
+                var result = await _orderService.getOrderByIdAsync(id);
+
+                if (result.IsSucceed)
+                {
+                    return Ok(result.responseData); // Return the data retrieved from the service
+                }
+                else
+                {
+                    return NotFound(result.Message); // Return a not found message if the operation fails
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}"); // Return a generic error message for internal server errors
+            }
+        }
+        [HttpGet]
+        [Route("getOrderByIdStatus/{id}")]
+        public async Task<IActionResult> getOrderByStatusAsync(int id)
+        {
+            try
+            {
+                var result = await _orderService.getOrderByStatusAsync(id);
+
+                if (result.IsSucceed)
+                {
+                    return Ok(result.responseData); // Return the data retrieved from the service
+                }
+                else
+                {
+                    return NotFound(result.Message); // Return a not found message if the operation fails
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}"); // Return a generic error message for internal server errors
+            }
+        }
+        [HttpPut]
+        [Authorize(Roles = Models.Role.ADMIN)]
+        [Route("updateStatus/{id}")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] StatusDto status)
+        {
+            var updateResult = await _orderService.UpdateStatus(id, status  );
 
             if (updateResult.IsSucceed)
             {

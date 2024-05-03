@@ -3,17 +3,22 @@ using WebCar.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using WebCar.Models;
+using WebCar.Services;
+using Serilog;
+
 namespace WebCar.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
-    { 
+    {
         private readonly IAuthService _authService;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, ILogger<AuthController> logger)
         {
             _authService = authService;
+            _logger = logger;
         }
 
         // Route For Seeding my roles to DB
@@ -32,6 +37,7 @@ namespace WebCar.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
             var registerResult = await _authService.RegisterAsync(registerDto);
+
 
             if (registerResult.IsSucceed)
                 return Ok(registerResult);
@@ -56,7 +62,7 @@ namespace WebCar.Controllers
         // Route -> make user -> admin
         [HttpPost]
         [Route("make-admin")]
-        [Authorize(Roles = Models.Role.ADMIN)]
+        //[Authorize(Roles = Models.Role.ADMIN)]
         public async Task<IActionResult> MakeAdmin([FromBody] UpdatePermissionDto updatePermissionDto)
         {
              var operationResult = await _authService.MakeAdminAsync(updatePermissionDto);
@@ -66,16 +72,31 @@ namespace WebCar.Controllers
 
             return BadRequest(operationResult);
         }
-
-        [HttpGet]
-        [Route("getAllRole")]
-        [Authorize(Roles = Role.ADMIN)]
-        public async Task<IActionResult> GetAllRole()
+        [HttpPost]
+        [Route("make-user")]
+        //[Authorize(Roles = Models.Role.ADMIN)]
+        public async Task<IActionResult> MakeUser([FromBody] UpdatePermissionDto updatePermissionDto)
         {
-            var operationResult = await _authService.GetAllRolesAsync();
+            var operationResult = await _authService.MakeUserAsync(updatePermissionDto);
 
             if (operationResult.IsSucceed)
                 return Ok(operationResult);
+
+            return BadRequest(operationResult);
+        }
+
+        [HttpGet]
+        [Route("getAllUser")]
+        //[Authorize(Roles = Role.ADMIN)]
+        public async Task<IActionResult> GetAllUser()
+        {
+            var operationResult = await _authService.GetAllUsersAsync();
+
+            if (operationResult.IsSucceed)
+            {
+                Log.Information("Auth => {@operationResult} ", operationResult);
+                return Ok(operationResult);
+            } 
             else
                 return BadRequest(operationResult);
         }
@@ -99,6 +120,28 @@ namespace WebCar.Controllers
             try
             {
                 var result = await _authService.GetRoleUserByUserNameAsync(userName);
+
+                if (result.IsSucceed)
+                {
+                    return Ok(result.responseData); // Return the data retrieved from the service
+                }
+                else
+                {
+                    return NotFound(result.Message); // Return a not found message if the operation fails
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}"); // Return a generic error message for internal server errors
+            }
+        }
+        [HttpGet]
+        [Route("getUserByRole")]
+        public async Task<IActionResult> getUserByRole(string role)
+        {
+            try
+            {
+                var result = await _authService.getUserByRole(role);
 
                 if (result.IsSucceed)
                 {

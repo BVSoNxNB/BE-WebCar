@@ -10,7 +10,11 @@
         Task<AuthServiceResponseDto> LoginAsync(LoginDto loginDto);
         //Task<AuthServiceResponseDto> LogoutAsync(string token);
         Task<AuthServiceResponseDto> MakeAdminAsync(UpdatePermissionDto updatePermissionDto);
-        Task<AuthServiceResponseDto> GetAllRolesAsync();
+        Task<AuthServiceResponseDto> MakeUserAsync(UpdatePermissionDto updatePermissionDto);
+
+        Task<AuthServiceResponseDto> GetAllUsersAsync();
         Task<AuthServiceResponseDto> GetRoleUserByUserNameAsync(string userName);
+        Task<AuthServiceResponseDto> getUserByRole(string role);
+
     }
 }

@@ -7,5 +7,9 @@ namespace WebCar.Repository
     {
         Task<AuthServiceResponseDto> Order(OrderDto orderDTO);
         Task<AuthServiceResponseDto> UpdateStatus(int statusId,StatusDto status);
+        Task<AuthServiceResponseDto> getAllOrderAsync();
+        Task<AuthServiceResponseDto> getOrderByIdAsync(int orderId);
+        Task<AuthServiceResponseDto> getOrderByStatusAsync(int statusId);
+
     }
 }

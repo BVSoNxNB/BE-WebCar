@@ -76,7 +76,7 @@ namespace WebCar.Services
                     };
                 }
                 //chua co du lieu trong cache thi lay tu database
-                var cars = await _dbContext.Cars.FirstOrDefaultAsync(c => c.Id == carId);
+                var cars = await _dbContext.Cars.FirstOrDefaultAsync(c => c.id == carId);
 
                 if (cars != null)
                 {

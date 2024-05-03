@@ -73,7 +73,26 @@ namespace WebCar.Services
             };
         }
 
-        public async Task<AuthServiceResponseDto> MakeAdminAsync(UpdatePermissionDto updatePermissionDto)
+            public async Task<AuthServiceResponseDto> MakeAdminAsync(UpdatePermissionDto updatePermissionDto)
+            {
+                var user = await _userManager.FindByNameAsync(updatePermissionDto.UserName);
+
+                if (user is null)
+                    return new AuthServiceResponseDto()
+                    {
+                        IsSucceed = false,
+                        Message = "Invalid User name!!!!!!!!"
+                    };
+                await _userManager.RemoveFromRoleAsync(user, Role.USER);
+                await _userManager.AddToRoleAsync(user, Role.ADMIN);
+
+                return new AuthServiceResponseDto()
+                {
+                    IsSucceed = true,
+                    Message = "User is now an ADMIN"
+                };
+            }
+        public async Task<AuthServiceResponseDto> MakeUserAsync(UpdatePermissionDto updatePermissionDto)
         {
             var user = await _userManager.FindByNameAsync(updatePermissionDto.UserName);
 
@@ -83,15 +102,50 @@ namespace WebCar.Services
                     IsSucceed = false,
                     Message = "Invalid User name!!!!!!!!"
                 };
-            await _userManager.RemoveFromRoleAsync(user, Role.USER);
-            await _userManager.AddToRoleAsync(user, Role.ADMIN);
+            await _userManager.RemoveFromRoleAsync(user, Role.ADMIN);
+            await _userManager.AddToRoleAsync(user, Role.USER);
 
             return new AuthServiceResponseDto()
             {
                 IsSucceed = true,
-                Message = "User is now an ADMIN"
+                Message = "User is now an USER"
             };
         }
+        public async Task<AuthServiceResponseDto> getUserByRole(string role)
+        {
+            try
+            {
+                // Tìm người dùng theo vai trò
+                var usersInRole = await _userManager.GetUsersInRoleAsync(role);
+
+                if (usersInRole == null || usersInRole.Count == 0)
+                {
+                    return new AuthServiceResponseDto
+                    {
+                        IsSucceed = false,
+                        Message = "No users found in the specified role."
+                    };
+                }
+
+                // Trả về thông tin người dùng
+                return new AuthServiceResponseDto
+                {
+                    IsSucceed = true,
+                    Message = "Users in the specified role retrieved successfully.",
+                    responseData = usersInRole
+                };
+            }
+            catch (Exception ex)
+            {
+                // Xử lý ngoại lệ nếu có
+                return new AuthServiceResponseDto
+                {
+                    IsSucceed = false,
+                    Message = $"An error occurred while retrieving users by role: {ex.Message}"
+                };
+            }
+        }
+
 
         public async Task<AuthServiceResponseDto> RegisterAsync(RegisterDto registerDto)
         {
@@ -162,15 +216,15 @@ namespace WebCar.Services
             };
         }
 
-        public async Task<AuthServiceResponseDto> GetAllRolesAsync()
+        public async Task<AuthServiceResponseDto> GetAllUsersAsync()
         {
-            var roles = await _roleManager.Roles.Select(r => r.Name).ToListAsync();
+            var User = await _userManager.Users.Select(r => r).ToListAsync();
 
             return new AuthServiceResponseDto
             {
                 IsSucceed = true,
-                Message = "Roles retrieved successfully",
-                responseData = roles
+                Message = "User retrieved successfully",
+                responseData = User
             };
         }
 
