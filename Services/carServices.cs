@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.Design;
 using System.Text.Json;
 using WebCar.DbContext;
 using WebCar.Dtos;
@@ -19,7 +20,7 @@ namespace WebCar.Services
             _dbContext = dbContext;
             _cache = cache;
         }
-
+        
         public async Task<AuthServiceResponseDto> createCarAsync(CarDto carDto)
         {
             try
@@ -108,6 +109,60 @@ namespace WebCar.Services
                 };
             }
         }
+        public async Task<AuthServiceResponseDto> getCarByIdCarCompanyAsync(int carCompanyId)
+        {
+            try
+            {
+                //kiem tra da co du lieu dc luu trong cache chua
+                var cachedData = await _cache.Get($"CarByCarcompanyId_{carCompanyId}");
+                if (cachedData != null)
+                {
+                    //da ton tai. thi convert du lieu tu byte qua json
+                    var car = JsonSerializer.Deserialize<Car>(cachedData);
+                    //tra du lieu ra 
+                    return new AuthServiceResponseDto
+                    {
+                        IsSucceed = true,
+                        Message = "Lấy thông tin Car từ cache thành công",
+                        responseData = car
+                    };
+                }
+                //chua co du lieu trong cache thi lay tu database
+                var cars = await _dbContext.Cars
+                                            .Where(c => c.CarCompanyId == carCompanyId)
+                                            .ToListAsync();
+
+                if (cars != null)
+                {
+                    // add du lieu tu data vao cache 
+                    //await _cache.Add($"CarByCarcompanyId_{carCompanyId}", JsonSerializer.Serialize(cars));
+                    //tra du lieu 
+                    return new AuthServiceResponseDto
+                    {
+                        IsSucceed = true,
+                        Message = "Lấy thông tin Car từ database thành công",
+                        responseData = cars
+                    };
+                }
+                else
+                {
+                    return new AuthServiceResponseDto
+                    {
+                        IsSucceed = false,
+                        Message = $"Không tìm thấy Car với ID {carCompanyId}"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new AuthServiceResponseDto
+                {
+                    IsSucceed = false,
+                    Message = $"Đã xảy ra lỗi khi lấy thông tin Car: {ex.Message}"
+                };
+            }
+        }
+        
         public async Task<AuthServiceResponseDto> getAllCarAsync()
         {
             try

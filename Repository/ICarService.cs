@@ -7,6 +7,9 @@
     {
         Task<AuthServiceResponseDto> createCarAsync(CarDto carDto);
         Task<AuthServiceResponseDto> getCarByIdAsync(int carId);
+        Task<AuthServiceResponseDto> getCarByIdCarCompanyAsync(int carCompanyId);
+
+        
         Task<AuthServiceResponseDto> getAllCarAsync();
         Task<AuthServiceResponseDto> updateCarAsync(int carId, CarDto carDto);
         Task<AuthServiceResponseDto> deleteCarAsync(int carId);

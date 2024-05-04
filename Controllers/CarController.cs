@@ -61,6 +61,28 @@ namespace WebCar.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}"); // Return a generic error message for internal server errors
             }
         }
+        [HttpGet]
+        [Route("getCarByIdCarCompany/{id}")]
+        public async Task<IActionResult> getCarByIdCarCompany(int id)
+        {
+            try
+            {
+                var result = await _carService.getCarByIdCarCompanyAsync(id);
+
+                if (result.IsSucceed)
+                {
+                    return Ok(result.responseData); // Return the data retrieved from the service
+                }
+                else
+                {
+                    return NotFound(result.Message); // Return a not found message if the operation fails
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}"); // Return a generic error message for internal server errors
+            }
+        }
         // POST api/<ValuesController>
         [HttpPost]
         [Route("create-Car")]
