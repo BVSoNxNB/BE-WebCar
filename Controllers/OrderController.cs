@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using StackExchange.Redis;
 using WebCar.Dtos.Car;
 using WebCar.Dtos.Order;
@@ -14,9 +15,11 @@ namespace WebCar.Controllers
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
-        public OrderController (IOrderService orderService)
+        private readonly KafkaProducerService _kafkaProducerService;
+        public OrderController (IOrderService orderService,KafkaProducerService kafkaProducerService )
         {
             _orderService = orderService;
+            _kafkaProducerService = kafkaProducerService;
         }
         [HttpPost]
         [Route("Order")]
@@ -26,12 +29,16 @@ namespace WebCar.Controllers
             var orderResuilt = await _orderService.Order(orderDto);
 
             if (orderResuilt.IsSucceed)
+            {
+                var message = JsonConvert.SerializeObject(orderDto);
+                await _kafkaProducerService.ProduceMessageAsync("WebCar", message);
                 return Ok(orderResuilt);
+            }
 
             return BadRequest(orderResuilt);
         }
         [HttpGet]
-        //[Authorize(Roles = Models.Role.ADMIN)]
+        [Authorize(Roles = Models.Role.ADMIN)]
         [Route("getAllOrder")]
         public async Task<IActionResult> getAllOrder()
         {
@@ -54,6 +61,7 @@ namespace WebCar.Controllers
             }
         }
         [HttpGet]
+        [Authorize(Roles = Models.Role.ADMIN)]
         [Route("getOrderById/{id}")]
         public async Task<IActionResult> getOrderByIdAsync(int id)
         {
@@ -77,6 +85,8 @@ namespace WebCar.Controllers
         }
         [HttpGet]
         [Route("getOrderByIdStatus/{id}")]
+        [Authorize(Roles = Models.Role.ADMIN)]
+
         public async Task<IActionResult> getOrderByStatusAsync(int id)
         {
             try

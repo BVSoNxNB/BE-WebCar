@@ -317,6 +317,20 @@ namespace WebCar.Services
                 responseData = userRoles
             };
         }
+        public async Task<AuthServiceResponseDto> GetUserByUserNameAsync(string userName)
+        {
+
+            var users = await _userManager.Users.Select(r => r).Where(r => r.UserName == userName).ToListAsync();
+
+
+            return new AuthServiceResponseDto
+                {
+                    IsSucceed = true,
+                    Message = "User roles retrieved successfully",
+                    responseData = users
+                };
+               
+        }
     }
 
 }

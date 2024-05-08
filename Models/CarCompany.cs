@@ -12,8 +12,11 @@ namespace WebCar.Models
         [StringLength(50)]
         [Display(Name = "Full name")]
         public string name { get; set; }
-        [Required]
-        public String logo { get; set; }
+        public string logo { get; set; }
+        // Trường tạm thời để nhận dữ liệu ảnh từ client
+        [NotMapped]
+        public IFormFile LogoFile { get; set; }
+
         // Navigation property
         public ICollection<Car> Cars { get; set; } // One-to-many relationship
     }

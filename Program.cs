@@ -1,4 +1,4 @@
-using WebCar.Models;
+﻿using WebCar.Models;
 using WebCar.Repository;
 using WebCar.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,6 +14,9 @@ using Serilog.Exceptions;
 using Serilog.Sinks.Elasticsearch;
 using System.Reflection;
 using Microsoft.AspNetCore.Hosting;
+using Minio;
+using Microsoft.Extensions.Options;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -116,11 +119,32 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 // Add Redis Cache
 builder.Services.AddStackExchangeRedisCache(options => { options.Configuration = builder.Configuration["RedisCacheUrl"]; });
 
+builder.Services.Configure<KafkaSettings>(builder.Configuration.GetSection("Kafka"));
+builder.Services.AddScoped<KafkaProducerService>();
+builder.Services.AddSingleton<KafkaConsumerService>();
+
+
+
 
 configureLogging();
 builder.Host.UseSerilog();
 
-// pipeline
+builder.Services.Configure<MinIOSettings>(builder.Configuration.GetSection("MinIO"));
+
+// Register MinioClient
+builder.Services.AddSingleton<IMinioClient>(sp =>
+{
+    var minioSettings = sp.GetRequiredService<IOptions<MinIOSettings>>().Value;
+    return new MinioClient()
+        .WithEndpoint(minioSettings.Host)
+        .WithCredentials(minioSettings.AccessKey, minioSettings.SecretKey)
+        .WithSSL(minioSettings.SSL)
+        .Build();
+});
+
+// Register your MinIOService
+builder.Services.AddTransient<MinIOService>();
+
 var app = builder.Build();
 app.UseCors(x => x
            .AllowAnyOrigin()
@@ -140,11 +164,31 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-
+var kafkaConsumerService = app.Services.GetRequiredService<KafkaConsumerService>();
+kafkaConsumerService.StartAsync(CancellationToken.None);
 app.Run();
 
 void configureLogging()
 {
+    //var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+    //var configuration = new ConfigurationBuilder()
+    //    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    //    .AddJsonFile(
+    //        $"appsettings.{environment}.json", optional: false
+    //       ).Build();
+    //Log.Logger = new LoggerConfiguration()
+    //    .Enrich.FromLogContext()
+    //    .Enrich.WithExceptionDetails()
+    //    .WriteTo.Debug()
+    //    .WriteTo.Console()
+    //    .WriteTo.Elasticsearch(ConfigureElasticSink(configuration, environment))
+    //    .Enrich.WithProperty("Environment", environment)
+    //    .ReadFrom.Configuration(configuration)
+    //    .WriteTo.File("logs/webCar-.txt", rollingInterval: RollingInterval.Day)
+    //    .CreateLogger();
+    //var config = new ConfigurationBuilder()
+    //        .AddJsonFile("appsettings.json")
+    //        .Build();
     var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
     var configuration = new ConfigurationBuilder()
         .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -152,24 +196,27 @@ void configureLogging()
             $"appsettings.{environment}.json", optional: false
            ).Build();
     Log.Logger = new LoggerConfiguration()
+        //.ReadFrom.Configuration(config)
+        .ReadFrom.Configuration(configuration)
         .Enrich.FromLogContext()
-        .Enrich.WithExceptionDetails()
-        .WriteTo.Debug()
         .WriteTo.Console()
         .WriteTo.Elasticsearch(ConfigureElasticSink(configuration, environment))
-        .Enrich.WithProperty("Environment", environment)
-        .ReadFrom.Configuration(configuration)
+        //.WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(config["ElasticsearchUrl"]))
+        //{
+        //    AutoRegisterTemplate = true,
+        //    IndexFormat = "your-app-logs-{0:yyyy.MM.dd}"
+        //})
         .WriteTo.File("logs/webCar-.txt", rollingInterval: RollingInterval.Day)
         .CreateLogger();
 }
 ElasticsearchSinkOptions ConfigureElasticSink(IConfigurationRoot configuration, string environment)
 {
-    return new ElasticsearchSinkOptions(new Uri(configuration["ElasticConfiguration:Uri"]))
+    return new ElasticsearchSinkOptions(new Uri(configuration["ElasticConfiguration:Url"]))
     {
         AutoRegisterTemplate = true,
         IndexFormat = $"{Assembly.GetExecutingAssembly().GetName().Name.ToLower().Replace(".", "-")}-{environment.ToLower()}-{DateTime.UtcNow:yyyy-MM}",
         NumberOfReplicas = 1,
         NumberOfShards = 2,
-        
+
     };
 }

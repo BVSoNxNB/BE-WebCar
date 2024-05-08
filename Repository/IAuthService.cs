@@ -14,6 +14,8 @@
 
         Task<AuthServiceResponseDto> GetAllUsersAsync();
         Task<AuthServiceResponseDto> GetRoleUserByUserNameAsync(string userName);
+        Task<AuthServiceResponseDto> GetUserByUserNameAsync(string userName);
+
         Task<AuthServiceResponseDto> getUserByRole(string role);
 
     }

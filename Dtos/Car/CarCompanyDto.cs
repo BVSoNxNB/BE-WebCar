@@ -2,11 +2,10 @@
 
 namespace WebCar.Dtos.Car
 {
-    public class CarCompanyDto
+   public class CarCompanyDto
     {
         [Required(ErrorMessage = "Ten hang xe khong duoc bo trong")]
-        public string name { get; set; }
-        public string logo { get; set; }
-        
+        public string name { get; set; }    
+        public IFormFile LogoFile { get; set; }
     }
 }

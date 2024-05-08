@@ -1,8 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using StackExchange.Redis;
+using System.Text;
+using WebCar.Dtos;
 using WebCar.Dtos.Car;
+using WebCar.Models;
 using WebCar.Repository;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -13,10 +18,16 @@ namespace WebCar.Controllers
     [ApiController]
     public class CarCompanyController : ControllerBase
     {
+        
         private readonly ICarCompanyService _carCompanyService;
-        public CarCompanyController(ICarCompanyService carCompanyService)
+        private readonly KafkaProducerService _kafkaProducerService;
+        
+
+        public CarCompanyController(ICarCompanyService carCompanyService, MinIOService minIOService, KafkaProducerService kafkaProducerService, IConfiguration configuration)
         {
             _carCompanyService = carCompanyService;
+            _kafkaProducerService = kafkaProducerService;
+
         }
         // GET api/<ValuesController>/5
         [HttpGet]
@@ -67,21 +78,26 @@ namespace WebCar.Controllers
         [HttpPost]
         [Authorize(Roles = Models.Role.ADMIN)]
         [Route("create-CarCompany")]
-        public async Task<IActionResult> createCarCompany([FromBody] CarCompanyDto carCompanyDto)
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> createCarCompany([FromForm] CarCompanyDto carCompanyDto)
         {
             var registerResult = await _carCompanyService.createCarCompanyAsync(carCompanyDto);
 
             if (registerResult.IsSucceed)
+            {
+                var message = JsonConvert.SerializeObject(carCompanyDto);
+                //await _kafkaProducerService.ProduceMessageAsync("WebCar", message);
                 return Ok(registerResult);
+            }
 
             return BadRequest(registerResult);
         }
-
         // PUT api/<ValuesController>/5
         [HttpPut]
         [Authorize(Roles = Models.Role.ADMIN)]
         [Route("updateCarCompany/{id}")]
-        public async Task<IActionResult> UpdateCarCompany(int id, [FromBody] CarCompanyDto carCompanyDto)
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> UpdateCarCompany(int id, [FromForm] CarCompanyDto carCompanyDto)
         {
             var updateResult = await _carCompanyService.updateCarCompanyAsync(id, carCompanyDto);
 

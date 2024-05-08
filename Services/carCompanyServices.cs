@@ -5,6 +5,9 @@ using WebCar.Dtos.Car;
 using WebCar.Models;
 using System.Text.Json;
 using WebCar.Repository;
+using System.Text;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace WebCar.Services
 {
@@ -12,29 +15,48 @@ namespace WebCar.Services
     {
         private readonly myDbContext _dbContext;
         private readonly IRedisCache _cache;
+        
+            private readonly MinIOService _minIOService;
+        private readonly IConfiguration _configuration;
 
-        public carCompanyService(myDbContext dbContext, IRedisCache cache)
+        public carCompanyService(myDbContext dbContext, IRedisCache cache, IConfiguration configuration, MinIOService minIOService)
         {
             _dbContext = dbContext;
             _cache = cache;
+            _configuration = configuration;
+            _minIOService = minIOService;
         }
 
         public async Task<AuthServiceResponseDto> createCarCompanyAsync(CarCompanyDto carCompanyDto)
         {
             try
             {
-                // nhan du lieu qua Dto
-                var carCompany = new CarCompany
+                // Kiểm tra xem có file ảnh được tải lên hay không
+                if (carCompanyDto.LogoFile != null && carCompanyDto.LogoFile.Length > 0)
                 {
-                    name = carCompanyDto.name,
-                    logo = carCompanyDto.logo
-                };
-                //luu vao database
-                _dbContext.CarCompanies.Add(carCompany);
-                await _dbContext.SaveChangesAsync();
-                await _cache.Delete("allCarCompanies");
-                //tra ve khi goi api 
-                return new AuthServiceResponseDto { IsSucceed = true, Message = "Tạo CarCompany thành công" };
+                    // Lưu trữ ảnh logo của công ty ô tô trên MinIO
+                    var logoUrl = await _minIOService.UploadImageAsync(carCompanyDto.LogoFile);
+                    // Tạo đối tượng CarCompany từ CarCompanyDto
+                    var carCompany = new CarCompany
+                    {
+                        name = carCompanyDto.name,
+                        logo = logoUrl,
+                        LogoFile = carCompanyDto.LogoFile
+                    };
+
+                    // Lưu vào database
+                    _dbContext.CarCompanies.Add(carCompany);
+                    await _dbContext.SaveChangesAsync();
+                    await _cache.Delete("allCarCompanies");
+
+                    // Trả về khi gọi API
+                    return new AuthServiceResponseDto { IsSucceed = true, Message = "Tạo CarCompany thành công" };
+                }
+                else
+                {
+                    // Nếu không có file ảnh được tải lên, trả về lỗi
+                    return new AuthServiceResponseDto { IsSucceed = false, Message = "Vui lòng tải lên file ảnh" };
+                }
             }
             catch (Exception ex)
             {
@@ -60,14 +82,13 @@ namespace WebCar.Services
                         responseData = carCompany
                     };
                 }
+
                 //chua co du lieu trong cache thi lay tu database
                 var carCompanys = await _dbContext.CarCompanies.FirstOrDefaultAsync(c => c.Id == carCompanyId);
 
                 if (carCompanys != null)
                 {
-                    // add du lieu tu data vao cache 
-                    await _cache.Add($"CarCompany_{carCompanyId}", JsonSerializer.Serialize(carCompanys));
-                    //tra du lieu 
+                    // Trả về đối tượng CarCompany bao gồm cả LogoFile
                     return new AuthServiceResponseDto
                     {
                         IsSucceed = true,
@@ -146,7 +167,7 @@ namespace WebCar.Services
         {
             try
             {
-                //lay du lieu tu data qua id
+                // Lấy CarCompany từ database
                 var existingCarCompany = await _dbContext.CarCompanies.FindAsync(carCompanyId);
 
                 if (existingCarCompany == null)
@@ -157,18 +178,35 @@ namespace WebCar.Services
                         Message = $"Không tìm thấy CarCompany với ID {carCompanyId}"
                     };
                 }
-                //gan du lieu moi 
+
+                // Xử lý cập nhật ảnh logo mới (nếu có)
+                string logoUrl = existingCarCompany.logo;
+                if (carCompanyDto.LogoFile != null && carCompanyDto.LogoFile.Length > 0)
+                {
+                    var segments = logoUrl.Split('/');
+                    var bucketName = segments[0];
+                    var objectName = segments[1];
+
+                    // Xóa object trên MinIO
+                    await _minIOService.DeleteImageAsync(bucketName, objectName);
+
+                    logoUrl = await _minIOService.UploadImageAsync(carCompanyDto.LogoFile);
+
+                }
+
+                // Cập nhật thông tin CarCompany
                 existingCarCompany.name = carCompanyDto.name;
-                existingCarCompany.logo = carCompanyDto.logo;
-                //luu du lieu vao data
+                existingCarCompany.logo = logoUrl;
+
+                // Lưu thay đổi vào database
                 await _dbContext.SaveChangesAsync();
                 await _cache.Delete("allCarCompanies");
                 await _cache.Delete($"CarCompany_{carCompanyId}");
-                //tra du lieu
+
                 return new AuthServiceResponseDto
                 {
                     IsSucceed = true,
-                    Message = "Update successfull"
+                    Message = "Cập nhật thông tin CarCompany thành công"
                 };
             }
             catch (Exception ex)
@@ -185,9 +223,10 @@ namespace WebCar.Services
         {
             try
             {
-                //tim du lieu trong data qua id de xoa
+                // Tìm dữ liệu trong database qua id để xóa
                 var existingCarCompany = await _dbContext.CarCompanies.FindAsync(carCompanyId);
-                //kiem tra ton tai
+
+                // Kiểm tra tồn tại
                 if (existingCarCompany == null)
                 {
                     return new AuthServiceResponseDto
@@ -196,17 +235,27 @@ namespace WebCar.Services
                         Message = $"Không tìm thấy CarCompany với ID {carCompanyId}"
                     };
                 }
-                //xoa du lieu
+
+                // Lấy tên bucket và tên object từ URL logo
+                var logoUrl = existingCarCompany.logo;
+                var segments = logoUrl.Split('/');
+                var bucketName = segments[0];
+                var objectName = segments[1];
+
+                // Xóa object trên MinIO
+                await _minIOService.DeleteImageAsync(bucketName, objectName);
+
+                // Xóa dữ liệu
                 _dbContext.CarCompanies.Remove(existingCarCompany);
                 await _dbContext.SaveChangesAsync();
                 await _cache.Delete("allCarCompanies");
+                await _cache.Delete("allCars");
                 await _cache.Delete($"CarCompany_{carCompanyId}");
 
-                //tra du lieu ra man hinh
                 return new AuthServiceResponseDto
                 {
                     IsSucceed = true,
-                    Message = "Xoá CarCompany thành công"
+                    Message = "Xóa CarCompany thành công"
                 };
             }
             catch (Exception ex)
@@ -214,7 +263,7 @@ namespace WebCar.Services
                 return new AuthServiceResponseDto
                 {
                     IsSucceed = false,
-                    Message = $"Đã xảy ra lỗi khi xoá CarCompany: {ex.Message}"
+                    Message = $"Đã xảy ra lỗi khi xóa CarCompany: {ex.Message}"
                 };
             }
         }
