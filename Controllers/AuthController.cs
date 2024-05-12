@@ -29,7 +29,7 @@ namespace WebCar.Controllers
         // Route For Seeding my roles to DB
         [HttpPost]
         [Route("seed-roles")]
-        //[Authorize(Roles = Models.Role.ADMIN)]
+        [Authorize(Roles = Models.Role.ADMIN)]
         public async Task<IActionResult> SeedRoles()
         {
              var seerRoles = await _authService.SeedRolesAsync();
@@ -71,7 +71,7 @@ namespace WebCar.Controllers
         // Route -> make user -> admin
         [HttpPost]
         [Route("make-admin")]
-        //[Authorize(Roles = Models.Role.ADMIN)]
+        [Authorize(Roles = Models.Role.ADMIN)]
         public async Task<IActionResult> MakeAdmin([FromBody] UpdatePermissionDto updatePermissionDto)
         {
              var operationResult = await _authService.MakeAdminAsync(updatePermissionDto);
@@ -140,21 +140,8 @@ namespace WebCar.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}"); // Return a generic error message for internal server errors
             }
         }
-        //// Route -> Logout
-        //[HttpPost]
-        //[Route("logout")]
-        //public async Task<IActionResult> Logout([FromBody] string token)
-        //{
-        //    var logoutResult = await _authService.LogoutAsync(token);
-
-        //    if (logoutResult.IsSucceed)
-        //        return Ok(logoutResult);
-
-        //    return BadRequest(logoutResult);
-        //}
         [HttpGet]
         [Route("GetRoleUserByUserNameAsync")]
-        [Authorize(Roles = Role.ADMIN)]
         public async Task<IActionResult> GetRoleUserByUserNameAsync(string userName)
         {
             try

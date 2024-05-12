@@ -15,22 +15,36 @@ namespace WebCar.Services
         //Tiêm để sử dụng 
         private readonly myDbContext _dbContext;
         private readonly IRedisCache _cache;
-        public carService(myDbContext dbContext, IRedisCache cache)
+        private readonly MinIOService _minIOService;
+
+        public carService(myDbContext dbContext, IRedisCache cache, MinIOService minIOService)
         {
             _dbContext = dbContext;
             _cache = cache;
+            _minIOService = minIOService;
         }
-        
+
         public async Task<AuthServiceResponseDto> createCarAsync(CarDto carDto)
         {
             try
             {
+                // Lưu trữ ảnh của xe trên MinIO
+                List<string> imageUrls = new List<string>();
+                if (carDto.hinhAnh != null && carDto.hinhAnh.Any())
+                {
+                    foreach (var imageFile in carDto.hinhAnh)
+                    {
+                        var imageUrl = await _minIOService.UploadImageAsync(imageFile);
+                        imageUrls.Add(imageUrl);
+                    }
+                }
 
                 // Tạo một đối tượng Car từ dữ liệu đầu vào
                 var car = new Car
                 {
-                    ten = carDto.ten, // Chú ý đến việc map dữ liệu từ DTO vào entity
-                    hinh = carDto.hinh,
+                    ten = carDto.ten, 
+                    hinh = imageUrls,
+                    hinhAnh = carDto.hinhAnh,
                     phienBan = carDto.phienBan,
                     namSanXuat = carDto.namSanXuat,
                     dungTich = carDto.dungTich,
@@ -225,10 +239,47 @@ namespace WebCar.Services
                         Message = $"Không tìm thấy Car với ID {carId}"
                     };
                 }
+                // Lấy danh sách ảnh cũ từ existingCar
+                var existingImageUrls = existingCar.hinh.ToList();
 
-                // Update the properties of the existing car 
-                existingCar.ten = carDto.ten; // Chú ý đến việc map dữ liệu từ DTO vào entity
-                existingCar.hinh = carDto.hinh;
+                // Lấy danh sách ảnh mới từ carDto
+                var newImageUrls = new List<string>();
+                if (carDto.hinhAnh != null && carDto.hinhAnh.Any())
+                {
+                    foreach (var imageFile in carDto.hinhAnh)
+                    {
+                        var fileName = Path.GetFileName(imageFile.FileName);
+                        var existingImageUrl = existingImageUrls.FirstOrDefault(url => url.EndsWith(fileName));
+
+                        if (existingImageUrl != null)
+                        {
+                            // Giữ lại ảnh cũ nếu nó vẫn còn trong danh sách mới
+                            newImageUrls.Add(existingImageUrl);
+                        }
+                        else
+                        {
+                            // Thêm mới ảnh nếu nó chưa tồn tại
+                            var imageUrl = await _minIOService.UploadImageAsync(imageFile);
+                            newImageUrls.Add(imageUrl);
+                        }
+                    }
+                }
+
+                // Xóa các ảnh không còn được sử dụng khỏi MinIO
+                var imagesToDelete = existingImageUrls.Except(newImageUrls).ToList();
+                foreach (var imageUrl in imagesToDelete)
+                {
+                    var segments = imageUrl.Split('/');
+                    var bucketName = segments[0];
+                    var objectName = segments[1];
+                    await _minIOService.DeleteImageAsync(bucketName, objectName);
+                }
+
+                // Gán danh sách ảnh mới cho existingCar
+                existingCar.hinh = newImageUrls;
+
+                // Cập nhật thông tin Car
+                existingCar.ten = carDto.ten;
                 existingCar.phienBan = carDto.phienBan;
                 existingCar.namSanXuat = carDto.namSanXuat;
                 existingCar.dungTich = carDto.dungTich;
@@ -276,6 +327,14 @@ namespace WebCar.Services
                 }
                 else
                 {
+                    // Xóa các ảnh cũ khỏi MinIO
+                    foreach (var imageUrl in existingCar.hinh)
+                    {
+                        var segments = imageUrl.Split('/');
+                        var bucketName = segments[0];
+                        var objectName = segments[1];
+                        await _minIOService.DeleteImageAsync(bucketName, objectName);
+                    }
                     _dbContext.Cars.Remove(existingCar);
 
                     // Save changes to the database

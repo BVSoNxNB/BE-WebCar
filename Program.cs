@@ -132,7 +132,7 @@ builder.Host.UseSerilog();
 builder.Services.Configure<MinIOSettings>(builder.Configuration.GetSection("MinIO"));
 
 // Register MinioClient
-builder.Services.AddSingleton<IMinioClient>(sp =>
+builder.Services.AddSingleton(sp =>
 {
     var minioSettings = sp.GetRequiredService<IOptions<MinIOSettings>>().Value;
     return new MinioClient()
@@ -142,8 +142,11 @@ builder.Services.AddSingleton<IMinioClient>(sp =>
         .Build();
 });
 
+builder.Services.AddScoped<MinIOService>();
+
+
 // Register your MinIOService
-builder.Services.AddTransient<MinIOService>();
+//builder.Services.AddTransient<MinIOService>();
 
 var app = builder.Build();
 app.UseCors(x => x

@@ -8,7 +8,8 @@ namespace WebCar.Dtos.Car
     {
         [Required(ErrorMessage = "Ten khong duoc bo trong")]
         public string ten { get; set; }
-        public List<String> hinh { get; set; }
+        public IEnumerable<IFormFile> hinhAnh { get; set; }
+
         public string phienBan { get; set; }
         [Required(ErrorMessage = "NamSX khong duoc bo trong")]
         public int namSanXuat { get; set; }

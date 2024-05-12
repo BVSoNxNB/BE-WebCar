@@ -23,6 +23,8 @@ namespace WebCar.Models
         public int kichThuoc { get; set; }
         public int soGhe { get; set; }
         public decimal gia { get; set; }
+        [NotMapped]
+        public IEnumerable<IFormFile> hinhAnh { get; set; }
         // Foreign key
         [ForeignKey("CarCompany")]
         public int CarCompanyId { get; set; }

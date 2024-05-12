@@ -10,14 +10,16 @@ public class MinIOService
     private readonly IMinioClient _minio;
     private readonly IConfiguration _configuration;
     private readonly string _bucketName;
-    private readonly string _host;
+    private readonly string _accessKey;
+    private readonly string _secretKey;
 
     public MinIOService(IMinioClient minioClient, IConfiguration configuration)
     {
         _minio = minioClient;
         _configuration = configuration;
         _bucketName = _configuration.GetValue<string>("MinIO:BucketName");
-        _host = _configuration.GetValue<string>("MinIO:Host");
+        _accessKey = _configuration.GetValue<string>("MinIO:AccessKey");
+        _secretKey = _configuration.GetValue<string>("MinIO:SecretKey");
     }
 
     public async Task<string> UploadImageAsync(IFormFile imageFile)
@@ -48,7 +50,7 @@ public class MinIOService
             .WithContentType(contentType)
         );
 
-        return $"{_bucketName}/{fileName}";
+        return $"{bucketName}/{fileName}";
     }
 
     public async Task<IFormFile> DownloadImageAsync(string bucketName, string fileName)
@@ -97,11 +99,12 @@ public class MinIOService
 
         return contentType;
     }
+
     public async Task<bool> DeleteImageAsync(string bucketName, string objectName)
     {
         var removeObjectArgs = new RemoveObjectArgs()
-        .WithBucket(bucketName)
-        .WithObject(objectName);
+            .WithBucket(bucketName)
+            .WithObject(objectName);
 
         await _minio.RemoveObjectAsync(removeObjectArgs);
         return true;

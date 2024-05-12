@@ -87,7 +87,8 @@ namespace WebCar.Controllers
         [HttpPost]
         [Route("create-Car")]
         [Authorize(Roles = Models.Role.ADMIN)]
-        public async Task<IActionResult> createCar([FromBody] CarDto carDto)
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> createCar([FromForm] CarDto carDto)
         {
             var registerResult = await _carService.createCarAsync(carDto);
 
@@ -101,7 +102,8 @@ namespace WebCar.Controllers
         [HttpPut]
         [Route("updateCar /{id}")]
         [Authorize(Roles = Models.Role.ADMIN)]
-        public async Task<IActionResult> updateCar(int id, [FromBody] CarDto carDto)
+        [DisableRequestSizeLimit]
+        public async Task<IActionResult> updateCar(int id, [FromForm] CarDto carDto)
         {
             var updateResult = await _carService.updateCarAsync(id, carDto);
 

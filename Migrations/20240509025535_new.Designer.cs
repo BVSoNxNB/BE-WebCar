@@ -13,8 +13,8 @@ using WebCar.DbContext;
 namespace WebCar.Migrations
 {
     [DbContext(typeof(myDbContext))]
-    [Migration("20240508023301_add")]
-    partial class add
+    [Migration("20240509025535_new")]
+    partial class @new
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
