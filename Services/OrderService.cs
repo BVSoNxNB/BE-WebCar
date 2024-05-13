@@ -41,25 +41,6 @@ namespace WebCar.Services
                     Text = orderDTO.Text,
                     Status = 0,
                     carId = orderDTO.carId,
-                    //Cars = _dbContext.Cars.Select(c => new Car
-                    //{
-                    //    // Ánh xạ các thuộc tính của đối tượng Car từ dữ liệu nhận được
-                    //    id = c.id,
-                    //    ten = c.ten,
-                    //    hinh = c.hinh,
-                    //    phienBan = c.phienBan,
-                    //    namSanXuat = c.namSanXuat,
-                    //    dungTich = c.dungTich,
-                    //    hopSo = c.hopSo,
-                    //    kieuDang = c.kieuDang,
-                    //    tinhTrang = c.tinhTrang,
-                    //    nhienLieu = c.nhienLieu,
-                    //    kichThuoc = c.kichThuoc,
-                    //    soGhe = c.soGhe,
-                    //    gia = c.gia,
-                    //    CarCompany = c.CarCompany,
-                    //    CarCompanyId = c.CarCompanyId,
-                    //}).ToList()
                 };
 
                 // Thêm đối tượng Order vào DbContext
@@ -198,7 +179,23 @@ namespace WebCar.Services
                     };
                 }
                 //chua co cache thi lay tu data
-                var order = await _dbContext.Orders.ToListAsync();
+                //var order = await _dbContext.Orders.ToListAsync();
+                var order = from o in _dbContext.Orders
+                            join c in _dbContext.Cars on o.carId equals c.id
+                            //join u in _dbContext.Users on o.UserId equals u.Id
+                            select new Models.Order
+                            {
+                                Id = o.Id,
+                                NameUser = o.NameUser,
+                                PhoneNumber = o.PhoneNumber,
+                                Text = o.Text,
+                                Status = o.Status,
+                                Email = o.Email,
+                                carId = c.id,
+                                Car = c,
+                                //UserId = u.Id,
+                                //User = u
+                            };
 
                 if (order != null)
                 {
